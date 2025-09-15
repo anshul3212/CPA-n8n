@@ -39,6 +39,14 @@ export function ChatWidget() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  function getSessionId() {
+    let sid = localStorage.getItem("chat_session_id");
+    if (!sid) {
+      sid = "session_" + Date.now().toString();
+      localStorage.setItem("chat_session_id", sid);
+    }
+    return sid;
+  }
 
   const handleFileUpload = (event) => {
     const file = event.target.files?.[0];
@@ -136,6 +144,7 @@ export function ChatWidget() {
     console.log("fileInputRef", fileInputRef);
     try {
       let response;
+      const sessionId = getSessionId();
 
       if (inputValue.trim()) {
         // ---- Text only ----
@@ -147,13 +156,17 @@ export function ChatWidget() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ message: inputValue }),
+            body: JSON.stringify({
+              message: inputValue,
+              session_id: sessionId,
+            }),
           }
         );
       } else if (fileInputRef.current?.files?.length) {
         // ---- File only ----
         const formData = new FormData();
         formData.append("file", fileInputRef.current.files[0]);
+        formData.append("session_id", sessionId); // same session_id used in chat messages
 
         response = await fetch(
           "https://anshulrawat.app.n8n.cloud/webhook/d15cdbec-f6f3-4daa-9c12-b8def7d0e05f",
