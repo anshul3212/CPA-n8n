@@ -181,8 +181,8 @@ export function ChatWidget() {
         fileInputRef.current.value = "";
       }
 
-      const data = await response.json();
-      // console.log("data", data);
+      const data = await response?.json();
+
       const botResponse = {
         id: (Date.now() + 1).toString(),
         text: data?.[0]?.output || "No response from server",
