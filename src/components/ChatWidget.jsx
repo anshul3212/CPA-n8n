@@ -182,7 +182,7 @@ export function ChatWidget() {
       }
 
       const data = await response.json();
-      console.log("data", data);
+      // console.log("data", data);
       const botResponse = {
         id: (Date.now() + 1).toString(),
         text: data?.[0]?.output || "No response from server",
