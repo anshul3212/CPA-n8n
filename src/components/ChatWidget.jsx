@@ -22,7 +22,7 @@ export function ChatWidget() {
   const [messages, setMessages] = useState([
     {
       id: "1",
-      text: "Hello! I'm your AI assistant. How can I help you today? You can also upload files to share with me!",
+      text: "Hello! I'm Eric. How can I help you today? You can also upload files to share with me!",
       isUser: false,
       timestamp: new Date(),
     },
@@ -156,7 +156,8 @@ export function ChatWidget() {
         formData.append("file", fileInputRef.current.files[0]);
 
         response = await fetch(
-          "https://anshulrawat.app.n8n.cloud/webhook-test/d15cdbec-f6f3-4daa-9c12-b8def7d0e05f",
+          "https://anshulrawat.app.n8n.cloud/webhook/d15cdbec-f6f3-4daa-9c12-b8def7d0e05f",
+          // "https://anshulrawat.app.n8n.cloud/webhook-test/d15cdbec-f6f3-4daa-9c12-b8def7d0e05f",
           {
             method: "POST",
             body: formData,
