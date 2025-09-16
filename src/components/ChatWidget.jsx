@@ -5,7 +5,9 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
+
 import {
   MessageCircle,
   X,
@@ -17,28 +19,46 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function ChatWidget() {
+export function ChatWidget({ rows }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: "1",
-      text: "Hello! I'm Eric. How can I help you today? You can also upload files to share with me!",
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  // const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const scrollRef = useRef(null);
+
+  const messagesEndRef = useRef(null);
+  // const scrollRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
+  useEffect(() => {
+    const greetingMessage = {
+      id: "1",
+      message_text:
+        "Hello! I'm Eric. How can I help you today? You can also upload files to share with me!",
+      isUser: false,
+      sender: "agent",
+      timestamp: new Date(),
+    };
+
+    if (rows.length > 0) {
+      // reverse rows so latest is at bottom
+      const orderedRows = [...rows].reverse();
+      setMessages([...orderedRows, greetingMessage]);
+    } else {
+      setMessages([greetingMessage]);
+    }
+  }, [rows]);
+
   function getSessionId() {
     let sid = localStorage.getItem("chat_session_id");
     if (!sid) {
@@ -48,49 +68,6 @@ export function ChatWidget() {
     return sid;
   }
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Create a URL for the file
-    const fileUrl = URL.createObjectURL(file);
-
-    const fileMessage = {
-      id: Date.now().toString(),
-      text: `Uploaded file: ${file.name}`,
-      isUser: true,
-      timestamp: new Date(),
-      file: {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: fileUrl,
-      },
-    };
-
-    setMessages((prev) => [...prev, fileMessage]);
-    setIsTyping(true);
-
-    // Simulate bot response to file upload
-    setTimeout(() => {
-      const botResponse = {
-        id: (Date.now() + 1).toString(),
-        text: `I received your file "${file.name}" (${formatFileSize(
-          file.size
-        )}). ${getFileTypeResponse(file.type)}`,
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 1000);
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -99,22 +76,6 @@ export function ChatWidget() {
     return (
       Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
     );
-  };
-
-  const getFileTypeResponse = (fileType) => {
-    if (fileType.startsWith("image/")) {
-      return "I can see this is an image file. I'd be happy to help you with any questions about it!";
-    } else if (fileType.includes("pdf") || fileType.includes("text")) {
-      return "This is a PDF document. I can help you with questions about document content or processing.";
-    } else if (fileType.includes("text") || fileType.includes("csv")) {
-      return "This appears to be a text file. I can help analyze or process text content.";
-    } else if (fileType.includes("audio")) {
-      return "I see you've uploaded an audio file. While I can't play it directly, I can help with audio-related questions.";
-    } else if (fileType.includes("video")) {
-      return "This is a video file. I can provide information about video formats and processing.";
-    } else {
-      return "I've received your file. While I may not be able to process all file types directly, I'm here to help with any questions!";
-    }
   };
 
   const getFileIcon = (fileType) => {
@@ -133,15 +94,17 @@ export function ChatWidget() {
     // Prepare user message for UI
     const userMessage = {
       id: Date.now().toString(),
-      text: inputValue || (fileInputRef.current?.files?.[0]?.name ?? ""),
+      message_text:
+        inputValue || (fileInputRef.current?.files?.[0]?.name ?? ""),
       isUser: true,
+      sender: "user",
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
-    console.log("fileInputRef", fileInputRef);
+
     try {
       let response;
       const sessionId = getSessionId();
@@ -185,8 +148,9 @@ export function ChatWidget() {
 
       const botResponse = {
         id: (Date.now() + 1).toString(),
-        text: data?.[0]?.output || "No response from server",
+        message_text: data?.[0]?.output || "No response from server",
         isUser: false,
+        sender: "agent",
         timestamp: new Date(),
       };
 
@@ -197,7 +161,7 @@ export function ChatWidget() {
         ...prev,
         {
           id: (Date.now() + 1).toString(),
-          text: "⚠️ Error connecting to server",
+          message_text: "⚠️ Error connecting to server",
           isUser: false,
           timestamp: new Date(),
         },
@@ -249,25 +213,28 @@ export function ChatWidget() {
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col p-0 overflow-y-scroll">
-            <ScrollArea className="flex-1 px-4 overflow-y-auto">
+            <ScrollArea className="flex-1 px-4 group" ref={scrollRef}>
               <div className="space-y-4 pb-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
                     className={cn(
                       "flex",
-                      message.isUser ? "justify-end" : "justify-start"
+                      message.sender == "user" ? "justify-end" : "justify-start"
                     )}
                   >
                     <div
                       className={cn(
                         "max-w-[80%] rounded-lg px-3 py-2 text-sm",
-                        message.isUser
+                        message.sender == "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {message.text}
+                      {/* {message.text} */}
+                      <div className="prose max-w-none">
+                        <ReactMarkdown>{message.message_text}</ReactMarkdown>
+                      </div>
                       {message.file && (
                         <div className="mt-2 p-2 rounded border border-current/20 bg-current/5">
                           <div className="flex items-center space-x-2">
@@ -320,6 +287,11 @@ export function ChatWidget() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
+              <ScrollBar
+                orientation="vertical"
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                forceMount
+              />
             </ScrollArea>
 
             {/* Input Area */}

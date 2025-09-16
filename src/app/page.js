@@ -1,6 +1,11 @@
 import { ChatWidget } from "@/components/ChatWidget";
+import { db } from "@/lib/db";
 
-export default function Home() {
+export default async function Home() {
+  const [rows] = await db.query(
+    "SELECT id, sender, message_text FROM ai_agent_chats1 ORDER BY id DESC LIMIT 10"
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8">
@@ -12,7 +17,7 @@ export default function Home() {
           conversation!
         </p>
       </main>
-      <ChatWidget />
+      <ChatWidget rows={rows} />
     </div>
   );
 }
